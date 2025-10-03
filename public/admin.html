@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Sistem Absensi ART</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .sidebar-active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -100%;
+                transition: left 0.3s;
+                z-index: 40;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-4 max-w-sm border-l-4 fade-in" id="toast-content">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i id="toast-icon" class="text-2xl"></i>
+                </div>
+                <div class="ml-3 flex-1">
+                    <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+                </div>
+                <button onclick="hideToast()" class="ml-4 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-white shadow-xl flex flex-col">
+            <div class="p-6 border-b">
+                <h1 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-user-shield text-blue-600"></i>
+                    Admin Panel
+                </h1>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#" onclick="showTab('dashboard')" class="sidebar-link flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-tab="dashboard">
+                    <i class="fas fa-home w-6"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" onclick="showTab('employees')" class="sidebar-link flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-tab="employees">
+                    <i class="fas fa-users w-6"></i>
+                    <span>Data ART</span>
+                </a>
+                <a href="#" onclick="showTab('attendances')" class="sidebar-link flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-tab="attendances">
+                    <i class="fas fa-clipboard-list w-6"></i>
+                    <span>Absensi</span>
+                </a>
+                <a href="#" onclick="showTab('leaves')" class="sidebar-link flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-tab="leaves">
+                    <i class="fas fa-calendar-times w-6"></i>
+                    <span>Cuti/Izin</span>
+                </a>
+                <a href="#" onclick="showTab('salary')" class="sidebar-link flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-tab="salary">
+                    <i class="fas fa-money-bill-wave w-6"></i>
+                    <span>Laporan Gaji</span>
+                </a>
+                <a href="#" onclick="showTab('settings')" class="sidebar-link flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-tab="settings">
+                    <i class="fas fa-cog w-6"></i>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+
+            <div class="p-4 border-t">
+                <a href="/" class="flex items-center px-4 py-3 text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-arrow-left w-6"></i>
+                    <span>Kembali ke Clock In</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto">
+
+            <!-- Header -->
+            <div class="bg-white shadow-sm p-6 flex justify-between items-center">
+                <div>
+                    <h2 id="page-title" class="text-2xl font-bold text-gray-800">Dashboard</h2>
+                    <p id="page-subtitle" class="text-gray-600 text-sm">Selamat datang di Admin Dashboard</p>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-600">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Stats Cards -->
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-blue-100 text-sm">Total ART</p>
+                                    <p class="text-3xl font-bold" id="total-employees">0</p>
+                                </div>
+                                <i class="fas fa-users text-4xl text-blue-200"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-green-100 text-sm">Hadir Hari Ini</p>
+                                    <p class="text-3xl font-bold" id="present-today">0</p>
+                                </div>
+                                <i class="fas fa-check-circle text-4xl text-green-200"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-purple-100 text-sm">Sedang Bekerja</p>
+                                    <p class="text-3xl font-bold" id="working-now">0</p>
+                                </div>
+                                <i class="fas fa-briefcase text-4xl text-purple-200"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Attendance -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">
+                            <i class="fas fa-calendar-day text-blue-600 mr-2"></i>
+                            Absensi Hari Ini
+                        </h3>
+                        <div id="today-attendance-list"></div>
+                    </div>
+                </div>
+
+                <!-- Employees Tab -->
+                <div id="employees-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-users text-blue-600 mr-2"></i>
+                                Data ART
+                            </h3>
+                            <button onclick="openEmployeeModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>
+                                Tambah ART
+                            </button>
+                        </div>
+                        <div id="employees-list"></div>
+                    </div>
+                </div>
+
+                <!-- Attendances Tab -->
+                <div id="attendances-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">
+                            <i class="fas fa-clipboard-list text-blue-600 mr-2"></i>
+                            Data Absensi
+                        </h3>
+
+                        <!-- Filter -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ART</label>
+                                <select id="filter-employee" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Semua ART</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Dari Tanggal</label>
+                                <input type="date" id="filter-start-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Sampai Tanggal</label>
+                                <input type="date" id="filter-end-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mb-6">
+                            <button onclick="filterAttendances()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-filter mr-2"></i>
+                                Filter
+                            </button>
+                            <button onclick="resetFilterAttendances()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
+                                <i class="fas fa-redo mr-2"></i>
+                                Reset
+                            </button>
+                            <button onclick="openAttendanceModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>
+                                Tambah Manual
+                            </button>
+                        </div>
+
+                        <div id="attendances-list"></div>
+                    </div>
+                </div>
+
+                <!-- Leaves Tab -->
+                <div id="leaves-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-calendar-times text-blue-600 mr-2"></i>
+                                Data Cuti/Izin/Sakit
+                            </h3>
+                            <button onclick="openLeaveModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>
+                                Tambah
+                            </button>
+                        </div>
+                        <div id="leaves-list"></div>
+                    </div>
+                </div>
+
+                <!-- Salary Tab -->
+                <div id="salary-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">
+                            <i class="fas fa-money-bill-wave text-blue-600 mr-2"></i>
+                            Laporan Gaji
+                        </h3>
+
+                        <!-- Filter -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ART</label>
+                                <select id="salary-employee" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Semua ART</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Bulan</label>
+                                <select id="salary-month" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="1">Januari</option>
+                                    <option value="2">Februari</option>
+                                    <option value="3">Maret</option>
+                                    <option value="4">April</option>
+                                    <option value="5">Mei</option>
+                                    <option value="6">Juni</option>
+                                    <option value="7">Juli</option>
+                                    <option value="8">Agustus</option>
+                                    <option value="9">September</option>
+                                    <option value="10">Oktober</option>
+                                    <option value="11">November</option>
+                                    <option value="12">Desember</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
+                                <select id="salary-year" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mb-6">
+                            <button onclick="loadSalaryReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-search mr-2"></i>
+                                Tampilkan
+                            </button>
+                            <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-file-excel mr-2"></i>
+                                Export Excel
+                            </button>
+                        </div>
+
+                        <div id="salary-report"></div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">
+                            <i class="fas fa-cog text-blue-600 mr-2"></i>
+                            Pengaturan Sistem
+                        </h3>
+
+                        <form id="settings-form" class="space-y-6">
+                            <!-- GPS Settings -->
+                            <div class="border-b pb-6">
+                                <h4 class="text-lg font-semibold text-gray-700 mb-4">Lokasi Kantor (GPS)</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                                        <input type="text" id="office_latitude" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="-6.200000">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                                        <input type="text" id="office_longitude" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="106.816666">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Radius (meter)</label>
+                                        <input type="number" id="office_radius" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="500">
+                                    </div>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Gunakan GPS smartphone atau Google Maps untuk mendapatkan koordinat
+                                </p>
+                            </div>
+
+                            <!-- Work Time Settings -->
+                            <div class="border-b pb-6">
+                                <h4 class="text-lg font-semibold text-gray-700 mb-4">Jam Kerja</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Jam Mulai</label>
+                                        <input type="time" id="work_start_time" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Jam Selesai</label>
+                                        <input type="time" id="work_end_time" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Salary Settings -->
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-700 mb-4">Pengaturan Gaji</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Gaji Per Hari (8 jam)</label>
+                                        <input type="number" id="daily_wage" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="100000">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Rate Lembur (per jam)</label>
+                                        <input type="number" id="overtime_rate" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="11000">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Multiplier Hari Minggu</label>
+                                        <input type="number" id="sunday_multiplier" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="2">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                                    <i class="fas fa-save mr-2"></i>
+                                    Simpan Pengaturan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals will be injected here by JavaScript -->
+    <div id="modals-container"></div>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>
